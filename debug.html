@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug - Image Generator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .debug-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background: #f9f9f9;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        pre {
+            background: #fff;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+            border: 1px solid #ddd;
+        }
+        .error {
+            color: red;
+        }
+        .success {
+            color: green;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        img {
+            max-width: 100%;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Image Generator Debug Tool</h1>
+
+    <div class="debug-section">
+        <h3>1. Check Current Settings</h3>
+        <button onclick="checkSettings()">Check Settings</button>
+        <div id="settings-result"></div>
+    </div>
+
+    <div class="debug-section">
+        <h3>2. Clear All Settings</h3>
+        <button onclick="clearSettings()">Clear LocalStorage</button>
+        <div id="clear-result"></div>
+    </div>
+
+    <div class="debug-section">
+        <h3>3. Test Pollinations Image Generation</h3>
+        <input type="text" id="testPrompt" placeholder="Enter prompt (e.g., a beautiful sunset)" value="a beautiful sunset">
+        <button onclick="testPollinationsGeneration()">Generate Test Image</button>
+        <div id="pollinations-test-result"></div>
+    </div>
+
+    <div class="debug-section">
+        <h3>4. Set Service to Pollinations</h3>
+        <button onclick="setServiceToPollinations()">Force Set Pollinations</button>
+        <div id="set-service-result"></div>
+    </div>
+
+    <script>
+        function checkSettings() {
+            const result = document.getElementById('settings-result');
+            const apiKey = localStorage.getItem('api_key');
+            const apiService = localStorage.getItem('api_service');
+
+            result.innerHTML = `
+                <pre>
+API Key: ${apiKey || '(not set)'}
+API Service: ${apiService || '(not set)'}
+                </pre>
+                ${!apiService ? '<p class="error">⚠️ Service is not set! This might be the issue.</p>' : ''}
+                ${apiService && apiService !== 'pollinations' ? '<p class="error">⚠️ Service is set to "' + apiService + '" instead of "pollinations"</p>' : ''}
+                ${apiService === 'pollinations' ? '<p class="success">✅ Service is correctly set to Pollinations</p>' : ''}
+            `;
+        }
+
+        function clearSettings() {
+            const result = document.getElementById('clear-result');
+            localStorage.removeItem('api_key');
+            localStorage.removeItem('api_service');
+            result.innerHTML = '<p class="success">✅ All settings cleared!</p>';
+        }
+
+        function setServiceToPollinations() {
+            const result = document.getElementById('set-service-result');
+            localStorage.setItem('api_service', 'pollinations');
+            localStorage.setItem('api_key', 'not-needed');
+            result.innerHTML = '<p class="success">✅ Service set to Pollinations! Now go back to the main app and try again.</p>';
+        }
+
+        async function testPollinationsGeneration() {
+            const result = document.getElementById('pollinations-test-result');
+            const prompt = document.getElementById('testPrompt').value.trim();
+
+            if (!prompt) {
+                result.innerHTML = '<p class="error">Please enter a prompt</p>';
+                return;
+            }
+
+            result.innerHTML = '<p>⏳ Generating image with Pollinations...</p>';
+
+            try {
+                // This is exactly how the app generates with Pollinations
+                const encodedPrompt = encodeURIComponent(prompt);
+                const timestamp = Date.now();
+                const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&seed=${timestamp}&nologo=true`;
+
+                result.innerHTML += `<p>Image URL: ${imageUrl}</p>`;
+                result.innerHTML += '<p>Testing if image loads...</p>';
+
+                // Test if the image loads
+                const img = new Image();
+
+                img.onload = () => {
+                    result.innerHTML = `
+                        <p class="success">✅ SUCCESS! Pollinations is working!</p>
+                        <p>URL: ${imageUrl}</p>
+                        <img src="${imageUrl}" alt="Generated image">
+                        <p><strong>If this works but the main app doesn't, there's a bug in the app code.</strong></p>
+                    `;
+                };
+
+                img.onerror = (error) => {
+                    result.innerHTML = `
+                        <p class="error">❌ FAILED! Image did not load.</p>
+                        <p>URL: ${imageUrl}</p>
+                        <p>Error: ${error.message || 'Unknown error'}</p>
+                    `;
+                };
+
+                img.src = imageUrl;
+
+            } catch (error) {
+                result.innerHTML = `
+                    <p class="error">❌ ERROR!</p>
+                    <pre>
+Error: ${error.message}
+Stack: ${error.stack}
+                    </pre>
+                `;
+            }
+        }
+
+        // Auto-check settings on load
+        window.onload = () => {
+            checkSettings();
+        };
+    </script>
+</body>
+</html>

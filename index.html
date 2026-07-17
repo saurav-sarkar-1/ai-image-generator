@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Image Generator</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎨 AI Image Generator</h1>
+            <p>Create stunning images from text descriptions</p>
+        </header>
+
+        <div class="api-setup" id="apiSetup">
+            <h3>⚙️ Choose Image Generation Service</h3>
+            <div class="api-service-selector">
+                <label>
+                    <input type="radio" name="service" value="pollinations" checked>
+                    <span>🌸 Pollinations AI (Free, Reliable) - Recommended</span>
+                </label>
+                <label>
+                    <input type="radio" name="service" value="huggingface">
+                    <span>🤗 Hugging Face (Free, May Have CORS Issues)</span>
+                </label>
+                <label>
+                    <input type="radio" name="service" value="stability">
+                    <span>🎨 Stability AI (Paid, Best Quality)</span>
+                </label>
+            </div>
+            <p>Enter your API key (not needed for Pollinations - recommended for beginners):</p>
+            <div class="api-input-group">
+                <input
+                    type="password"
+                    id="apiKey"
+                    placeholder="Enter API key (not needed for Pollinations)"
+                >
+                <button id="saveApiKey" class="save-key-btn">Save & Continue</button>
+            </div>
+            <p class="info-text">
+                <strong>Pollinations AI (Recommended):</strong> No API key needed, works reliably in all browsers<br>
+                <strong>Hugging Face:</strong> Free tier available! Get API token at <a href="https://huggingface.co/settings/tokens" target="_blank">Hugging Face Tokens</a> (may have CORS issues in some browsers)<br>
+                <strong>Stability AI:</strong> Get API key at <a href="https://platform.stability.ai/" target="_blank">Stability Platform</a> for best quality
+            </p>
+        </div>
+
+        <div class="generator-section" id="generatorSection" style="display: none;">
+            <div class="input-group">
+                <label for="prompt">Enter your image prompt:</label>
+                <textarea
+                    id="prompt"
+                    placeholder="Describe the image you want to generate... e.g., 'A serene mountain landscape at sunset with a lake reflection'"
+                    rows="4"
+                ></textarea>
+                <button id="enhancePromptBtn" class="enhance-prompt-btn">✨ Enhance My Prompt</button>
+            </div>
+
+            <div class="prompt-tips">
+                <strong>💡 Tips for better results:</strong>
+                <ul>
+                    <li>Be specific about colors, lighting, and mood</li>
+                    <li>Mention art style (realistic, cartoon, oil painting, etc.)</li>
+                    <li>Include details about composition and perspective</li>
+                    <li>Describe textures and materials</li>
+                    <li>Example: "A majestic red fox in a snowy forest, golden hour lighting, photorealistic, bokeh background, 4k quality"</li>
+                </ul>
+            </div>
+
+            <div class="settings-group">
+                <div class="setting">
+                    <label for="size">Image Size:</label>
+                    <select id="size">
+                        <option value="256x256">Small (256x256)</option>
+                        <option value="512x512">Medium (512x512)</option>
+                        <option value="1024x1024">Large (1024x1024)</option>
+                    </select>
+                </div>
+            </div>
+
+            <button id="generateBtn" class="generate-btn">
+                <span class="btn-text">Generate Image</span>
+                <span class="spinner" style="display: none;">⏳</span>
+            </button>
+        </div>
+
+        <div id="resultSection" class="result-section" style="display: none;">
+            <h2>Generated Image</h2>
+            <div class="image-container">
+                <img id="generatedImage" src="" alt="Generated image">
+            </div>
+
+            <div class="feedback-section">
+                <h3>Evaluate Result</h3>
+                <div class="feedback-options">
+                    <button class="feedback-btn good" id="feedbackGood">👍 Good</button>
+                    <button class="feedback-btn bad" id="feedbackBad">👎 Not What I Expected</button>
+                </div>
+            </div>
+
+            <div id="improvementSection" class="improvement-section" style="display: none;">
+                <h3>What's wrong with the image?</h3>
+                <div class="issue-checklist">
+                    <label>
+                        <input type="checkbox" value="missing_elements"> Missing important elements
+                    </label>
+                    <label>
+                        <input type="checkbox" value="wrong_style"> Wrong artistic style
+                    </label>
+                    <label>
+                        <input type="checkbox" value="wrong_colors"> Wrong colors or lighting
+                    </label>
+                    <label>
+                        <input type="checkbox" value="composition"> Poor composition or layout
+                    </label>
+                    <label>
+                        <input type="checkbox" value="quality"> Low quality or distorted
+                    </label>
+                    <label>
+                        <input type="checkbox" value="wrong_subject"> Wrong subject or object
+                    </label>
+                </div>
+
+                <div class="input-group">
+                    <label for="improvements">Describe what needs to be improved:</label>
+                    <textarea
+                        id="improvements"
+                        placeholder="Example: Add more vibrant colors, include a sunset in the background, make it more photorealistic..."
+                        rows="3"
+                    ></textarea>
+                </div>
+
+                <button id="improveBtn" class="improve-btn">✨ Generate Improved Version</button>
+            </div>
+
+            <div class="action-buttons">
+                <button id="downloadBtn" class="download-btn">📥 Download Image</button>
+                <button id="newImageBtn" class="new-image-btn">🔄 Start Fresh</button>
+            </div>
+
+            <div class="prompt-history" id="promptHistory" style="display: none;">
+                <h3>Prompt Evolution</h3>
+                <div id="historyList"></div>
+            </div>
+        </div>
+
+        <div id="errorSection" class="error-section" style="display: none;">
+            <p id="errorMessage"></p>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
