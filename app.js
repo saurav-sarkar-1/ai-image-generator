@@ -47,6 +47,9 @@ class ImageGenerator {
         this.uploadPreview = document.getElementById('uploadPreview');
         this.uploadPlaceholder = document.getElementById('uploadPlaceholder');
         this.clearUploadBtn = document.getElementById('clearUpload');
+        this.galleryGrid = document.getElementById('galleryGrid');
+        this.galleryEmpty = document.getElementById('galleryEmpty');
+        this.clearGalleryBtn = document.getElementById('clearGalleryBtn');
     }
 
     attachEventListeners() {
@@ -58,6 +61,10 @@ class ImageGenerator {
         this.feedbackGoodBtn.addEventListener('click', () => this.handleFeedback('good'));
         this.feedbackBadBtn.addEventListener('click', () => this.handleFeedback('bad'));
         this.improveBtn.addEventListener('click', () => this.improveImage());
+
+        if (this.clearGalleryBtn) {
+            this.clearGalleryBtn.addEventListener('click', () => this.clearGallery());
+        }
 
         this.promptInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
@@ -257,6 +264,7 @@ class ImageGenerator {
             });
 
             await this.displayImage(imageUrl);
+            this.addToGallery(imageUrl, prompt);
             this.updatePromptHistory();
 
         } catch (error) {
@@ -699,6 +707,65 @@ class ImageGenerator {
         this.clearUpload();
         this.hideError();
         this.promptInput.focus();
+    }
+
+    addToGallery(imageUrl, prompt) {
+        if (!this.galleryGrid) return;
+
+        const card = document.createElement('div');
+        card.className = 'gallery-card';
+
+        const shortPrompt = prompt.length > 80 ? prompt.slice(0, 80) + '…' : prompt;
+
+        card.innerHTML = `
+            <img src="${imageUrl}" alt="${shortPrompt}" loading="lazy">
+            <div class="gallery-card-info">
+                <div class="gallery-card-prompt">${shortPrompt}</div>
+            </div>
+            <div class="gallery-card-actions">
+                <button class="gallery-card-btn download">↓ Save</button>
+                <button class="gallery-card-btn delete">✕</button>
+            </div>
+        `;
+
+        card.querySelector('.download').addEventListener('click', (e) => {
+            e.stopPropagation();
+            const link = document.createElement('a');
+            link.href = imageUrl;
+            link.download = `ai_image_${Date.now()}.png`;
+            link.click();
+        });
+
+        card.querySelector('.delete').addEventListener('click', (e) => {
+            e.stopPropagation();
+            card.remove();
+            this.updateGalleryState();
+        });
+
+        // Click card to load image into main view
+        card.addEventListener('click', () => {
+            this.generatedImage.src = imageUrl;
+            this.resultSection.style.display = 'block';
+        });
+
+        this.galleryGrid.prepend(card);
+        this.updateGalleryState();
+    }
+
+    updateGalleryState() {
+        const count = this.galleryGrid.querySelectorAll('.gallery-card').length;
+        if (count === 0) {
+            this.galleryEmpty.style.display = 'flex';
+            this.clearGalleryBtn.style.display = 'none';
+        } else {
+            this.galleryEmpty.style.display = 'none';
+            this.clearGalleryBtn.style.display = 'inline-flex';
+        }
+    }
+
+    clearGallery() {
+        this.galleryGrid.innerHTML = '';
+        this.updateGalleryState();
     }
 
     setLoading(isLoading) {

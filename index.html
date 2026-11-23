@@ -96,6 +96,10 @@
 
         <!-- ── Main ── -->
         <main class="main">
+          <div class="main-panels">
+
+            <!-- Left: generator + result -->
+            <div class="panel-left">
             <div class="generator-section" id="generatorSection" style="display: none;">
                 <h1 class="page-title">Generate an image</h1>
                 <p class="page-subtitle">Describe what you want to see and let AI bring it to life.</p>
@@ -183,6 +187,22 @@
             <div id="errorSection" class="error-section" style="display: none;">
                 <p id="errorMessage"></p>
             </div>
+            </div><!-- /panel-left -->
+
+            <!-- Right: gallery -->
+            <div class="panel-right">
+                <div class="gallery-header">
+                    <span class="gallery-title">Gallery</span>
+                    <button id="clearGalleryBtn" class="btn-ghost" style="display:none;">🗑 Clear all</button>
+                </div>
+                <div id="galleryEmpty" class="gallery-empty">
+                    <div class="gallery-empty-icon">🖼️</div>
+                    <div class="gallery-empty-text">Your generated images will appear here</div>
+                </div>
+                <div id="galleryGrid" class="gallery-grid"></div>
+            </div><!-- /panel-right -->
+
+          </div><!-- /main-panels -->
         </main>
     </div>
 
