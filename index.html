@@ -69,6 +69,21 @@
                 </div>
             </div>
 
+            <!-- Image upload (shown after service is selected) -->
+            <div id="imageUploadArea" style="display: none;">
+                <div class="section-label">Reference Image <span style="color: var(--text-muted); font-weight: 400; text-transform: none; font-size: 0.72rem;">(optional)</span></div>
+                <label class="upload-zone" id="uploadZone" for="imageUpload">
+                    <input type="file" id="imageUpload" accept="image/*" style="display:none;">
+                    <div id="uploadPlaceholder">
+                        <div class="upload-icon">🖼️</div>
+                        <div class="upload-text">Drop image or click to upload</div>
+                        <div class="upload-hint">JPG, PNG, WebP — Hugging Face only</div>
+                    </div>
+                    <img id="uploadPreview" style="display:none; width:100%; border-radius: var(--radius-sm); max-height: 160px; object-fit: cover;">
+                </label>
+                <button id="clearUpload" class="btn-ghost" style="display:none; width:100%; margin-top:6px; justify-content:center;">✕ Remove image</button>
+            </div>
+
             <div style="margin-top: auto;">
                 <div class="section-label">Image Size</div>
                 <select id="size" class="size-select">

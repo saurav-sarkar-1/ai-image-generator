@@ -4,6 +4,7 @@ class ImageGenerator {
         this.service = localStorage.getItem('api_service') || 'pollinations';
         this.promptHistory = [];
         this.currentIteration = 0;
+        this.uploadedImageData = null; // base64 data URL of uploaded image
         this.init();
     }
 
@@ -39,6 +40,12 @@ class ImageGenerator {
         this.promptHistorySection = document.getElementById('promptHistory');
         this.historyList = document.getElementById('historyList');
         this.issueCheckboxes = document.querySelectorAll('.issue-checklist input[type="checkbox"]');
+        this.imageUploadArea = document.getElementById('imageUploadArea');
+        this.imageUpload = document.getElementById('imageUpload');
+        this.uploadZone = document.getElementById('uploadZone');
+        this.uploadPreview = document.getElementById('uploadPreview');
+        this.uploadPlaceholder = document.getElementById('uploadPlaceholder');
+        this.clearUploadBtn = document.getElementById('clearUpload');
     }
 
     attachEventListeners() {
@@ -60,20 +67,68 @@ class ImageGenerator {
 
         // Set the saved service
         this.serviceRadios.forEach(radio => {
-            if (radio.value === this.service) {
-                radio.checked = true;
-            }
+            if (radio.value === this.service) radio.checked = true;
+            radio.addEventListener('change', () => this.onServiceChange());
         });
+
+        // Image upload
+        this.imageUpload.addEventListener('change', (e) => this.handleImageFile(e.target.files[0]));
+        this.clearUploadBtn.addEventListener('click', (e) => { e.preventDefault(); this.clearUpload(); });
+
+        // Drag and drop
+        this.uploadZone.addEventListener('dragover', (e) => { e.preventDefault(); this.uploadZone.classList.add('drag-over'); });
+        this.uploadZone.addEventListener('dragleave', () => this.uploadZone.classList.remove('drag-over'));
+        this.uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            this.uploadZone.classList.remove('drag-over');
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) this.handleImageFile(file);
+        });
+    }
+
+    onServiceChange() {
+        const service = document.querySelector('input[name="service"]:checked')?.value;
+        // Show upload area only for huggingface (the only free img2img provider)
+        if (this.imageUploadArea) {
+            this.imageUploadArea.style.display = (service === 'huggingface') ? 'block' : 'none';
+        }
+        this.checkApiKey();
+    }
+
+    handleImageFile(file) {
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            this.uploadedImageData = e.target.result; // base64 data URL
+            this.uploadPreview.src = this.uploadedImageData;
+            this.uploadPreview.style.display = 'block';
+            this.uploadPlaceholder.style.display = 'none';
+            this.clearUploadBtn.style.display = 'flex';
+        };
+        reader.readAsDataURL(file);
+    }
+
+    clearUpload() {
+        this.uploadedImageData = null;
+        this.imageUpload.value = '';
+        this.uploadPreview.src = '';
+        this.uploadPreview.style.display = 'none';
+        this.uploadPlaceholder.style.display = 'block';
+        this.clearUploadBtn.style.display = 'none';
     }
 
     checkApiKey() {
         const selectedService = document.querySelector('input[name="service"]:checked')?.value || 'pollinations';
 
-        // If service is not set in localStorage, auto-select pollinations (works without auth)
         if (!localStorage.getItem('api_service')) {
             this.service = 'pollinations';
             localStorage.setItem('api_service', 'pollinations');
             localStorage.setItem('api_key', 'not-needed');
+        }
+
+        // Show upload area only for huggingface
+        if (this.imageUploadArea) {
+            this.imageUploadArea.style.display = (selectedService === 'huggingface') ? 'block' : 'none';
         }
 
         if (selectedService === 'pollinations') {
@@ -155,6 +210,12 @@ class ImageGenerator {
 
         const selectedService = this.service || 'pollinations';
 
+        // Warn if image uploaded but service doesn't support it
+        if (this.uploadedImageData && selectedService !== 'huggingface') {
+            this.showError('Image upload is only supported with Hugging Face. Switch to Hugging Face or remove the image.');
+            return;
+        }
+
         this.setLoading(true);
         this.hideError();
 
@@ -169,7 +230,11 @@ class ImageGenerator {
             let imageUrl;
 
             if (selectedService === 'huggingface') {
-                imageUrl = await this.generateWithHuggingFace(prompt);
+                if (this.uploadedImageData) {
+                    imageUrl = await this.generateWithHuggingFaceImg2Img(prompt, this.uploadedImageData);
+                } else {
+                    imageUrl = await this.generateWithHuggingFace(prompt);
+                }
             } else if (selectedService === 'pollinations') {
                 imageUrl = await this.generateWithPollinations(prompt);
             } else if (selectedService === 'stability') {
@@ -236,6 +301,47 @@ class ImageGenerator {
         const blob = await response.blob();
         const imageUrl = URL.createObjectURL(blob);
         return imageUrl;
+    }
+
+    async generateWithHuggingFaceImg2Img(prompt, imageDataUrl) {
+        // Convert base64 data URL to a Blob
+        const base64 = imageDataUrl.split(',')[1];
+        const mimeMatch = imageDataUrl.match(/data:([^;]+);/);
+        const mime = mimeMatch ? mimeMatch[1] : 'image/png';
+        const byteChars = atob(base64);
+        const byteArr = new Uint8Array(byteChars.length);
+        for (let i = 0; i < byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
+        const imageBlob = new Blob([byteArr], { type: mime });
+
+        // Use the img2img endpoint on HF Inference API
+        // stabilityai/stable-diffusion-2-1 supports image input via multipart
+        const API_URL = 'https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-refiner-1.0';
+
+        const formData = new FormData();
+        formData.append('inputs', prompt);
+        formData.append('image', imageBlob, 'input.png');
+        formData.append('parameters', JSON.stringify({ strength: 0.75, num_inference_steps: 30 }));
+
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${this.apiKey}` },
+            body: formData
+        });
+
+        if (!response.ok) {
+            if (response.status === 503) throw new Error('Model is loading, please wait 20 seconds and try again.');
+            if (response.status === 401 || response.status === 403) throw new Error('Invalid Hugging Face token. Please check your token in Settings.');
+            const errorText = await response.text();
+            // Fallback: if img2img fails, try text2img with the prompt
+            if (response.status === 422 || response.status === 400) {
+                this.showSuccess('Note: img2img not supported by this model, generating from prompt only.');
+                return await this.generateWithHuggingFace(prompt);
+            }
+            throw new Error(`Hugging Face error: ${errorText}`);
+        }
+
+        const blob = await response.blob();
+        return URL.createObjectURL(blob);
     }
 
     handleFeedback(type) {
@@ -585,6 +691,7 @@ class ImageGenerator {
         this.issueCheckboxes.forEach(cb => cb.checked = false);
         this.promptHistory = [];
         this.currentIteration = 0;
+        this.clearUpload();
         this.hideError();
         this.promptInput.focus();
     }
