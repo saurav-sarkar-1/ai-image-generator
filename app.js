@@ -69,15 +69,22 @@ class ImageGenerator {
     checkApiKey() {
         const selectedService = document.querySelector('input[name="service"]:checked')?.value || 'pollinations';
 
-        // If service is not set in localStorage, force set it now
+        // If service is not set in localStorage, auto-select pollinations (works without auth)
         if (!localStorage.getItem('api_service')) {
-            this.service = selectedService;
-            localStorage.setItem('api_service', selectedService);
+            this.service = 'pollinations';
+            localStorage.setItem('api_service', 'pollinations');
             localStorage.setItem('api_key', 'not-needed');
         }
 
-        // Pollinations and Hugging Face free tier don't require API key
-        if (selectedService === 'pollinations' || selectedService === 'huggingface' || this.apiKey) {
+        if (selectedService === 'pollinations') {
+            this.apiSetup.style.display = 'none';
+            this.generatorSection.style.display = 'block';
+            this.promptInput.focus();
+        } else if (selectedService === 'huggingface' && this.apiKey && this.apiKey !== 'not-needed') {
+            this.apiSetup.style.display = 'none';
+            this.generatorSection.style.display = 'block';
+            this.promptInput.focus();
+        } else if (selectedService === 'stability' && this.apiKey) {
             this.apiSetup.style.display = 'none';
             this.generatorSection.style.display = 'block';
             this.promptInput.focus();
@@ -92,14 +99,18 @@ class ImageGenerator {
         const selectedService = document.querySelector('input[name="service"]:checked')?.value || 'pollinations';
         const apiKey = this.apiKeyInput.value.trim();
 
-        // Pollinations and Hugging Face free tier don't need API key
-        if (selectedService === 'pollinations' || selectedService === 'huggingface') {
+        // Hugging Face and Pollinations free tier don't need API key
+        if (selectedService === 'huggingface' || selectedService === 'pollinations') {
+            if (!apiKey) {
+                this.showError('Please paste your free Hugging Face token (hf_...). See the instructions above.');
+                return;
+            }
             this.service = selectedService;
-            this.apiKey = apiKey || 'not-needed';
+            this.apiKey = apiKey;
             localStorage.setItem('api_service', selectedService);
-            localStorage.setItem('api_key', apiKey || 'not-needed');
-            const serviceName = selectedService === 'pollinations' ? 'Pollinations AI' : 'Hugging Face';
-            this.showSuccess(`${serviceName} selected! You can now generate images.`);
+            localStorage.setItem('api_key', apiKey);
+            this.apiKeyInput.value = '';
+            this.showSuccess('Hugging Face token saved! You can now generate images.');
             this.checkApiKey();
             return;
         }
@@ -187,17 +198,16 @@ class ImageGenerator {
     }
 
     async generateWithHuggingFace(prompt) {
-        // Using Stable Diffusion XL on Hugging Face Inference API
         const API_URL = 'https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0';
 
-        const headers = {
-            'Content-Type': 'application/json'
-        };
-
-        // Add API token if provided for better rate limits
-        if (this.apiKey && this.apiKey !== 'not-needed') {
-            headers['Authorization'] = `Bearer ${this.apiKey}`;
+        if (!this.apiKey || this.apiKey === 'not-needed') {
+            throw new Error('A Hugging Face token is required. Go to Settings and add your free token.');
         }
+
+        const headers = {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${this.apiKey}`
+        };
 
         const response = await fetch(API_URL, {
             method: 'POST',
@@ -214,6 +224,9 @@ class ImageGenerator {
         if (!response.ok) {
             if (response.status === 503) {
                 throw new Error('Model is loading, please wait 20 seconds and try again');
+            }
+            if (response.status === 401 || response.status === 403) {
+                throw new Error('Invalid Hugging Face token. Please check your token in Settings.');
             }
             const errorText = await response.text();
             throw new Error(`Hugging Face API error: ${errorText}`);
@@ -380,7 +393,7 @@ class ImageGenerator {
         this.promptHistorySection.style.display = 'block';
         this.historyList.innerHTML = '';
 
-        this.promptHistory.forEach((item, index) => {
+        this.promptHistory.forEach((item) => {
             const historyItem = document.createElement('div');
             historyItem.className = 'history-item';
 
@@ -404,23 +417,36 @@ class ImageGenerator {
     }
 
     async generateWithPollinations(prompt) {
-        // Pollinations AI - completely free, no API key needed
-
-        // Warning for celebrity/real person names
         const celebrityPattern = /\b(sourav ganguly|virat kohli|sachin tendulkar|dhoni|rohit sharma|elon musk|trump|biden|obama|celebrity name)\b/i;
         if (celebrityPattern.test(prompt)) {
             console.warn('Note: AI image generators cannot create accurate images of real people due to privacy/copyright. The result will be a generic interpretation.');
         }
 
         const encodedPrompt = encodeURIComponent(prompt);
-        const timestamp = Date.now();
+        const timestamp = Math.floor(Math.random() * 2147483647);
+        const width = 1024;
+        const height = 1024;
+        const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&seed=${timestamp}&model=flux`;
 
-        // Use Pollinations with turbo model for better quality
-        const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&seed=${timestamp}&nologo=true&model=flux`;
+        // Check for rate limit or error before displaying
+        const response = await fetch(imageUrl, { cache: 'no-store' });
+        if (!response.ok) {
+            let errorMsg = '';
+            try {
+                const data = await response.json();
+                errorMsg = data?.error?.message || data?.message || '';
+            } catch {}
+            if (response.status === 402) {
+                throw new Error(`Pollinations rate limit: ${errorMsg || 'Wait 45 seconds between requests.'}`);
+            }
+            if (response.status === 503) {
+                throw new Error(`Pollinations is overloaded. ${errorMsg || 'Please try again in a few seconds.'}`);
+            }
+            throw new Error(errorMsg || `Pollinations error (${response.status}). Please try again later.`);
+        }
 
-        // Test if the image loads
-        await this.testImageUrl(imageUrl);
-        return imageUrl;
+        const blob = await response.blob();
+        return URL.createObjectURL(blob);
     }
 
     async generateWithStability(prompt) {
