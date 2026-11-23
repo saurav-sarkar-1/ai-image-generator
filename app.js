@@ -29,6 +29,7 @@ class ImageGenerator {
         this.apiKeyInput = document.getElementById('apiKey');
         this.saveApiKeyBtn = document.getElementById('saveApiKey');
         this.apiSetup = document.getElementById('apiSetup');
+        this.apiKeyArea = document.getElementById('apiKeyArea');
         this.btnText = document.querySelector('.btn-text');
         this.spinner = document.querySelector('.spinner');
         this.serviceRadios = document.querySelectorAll('input[name="service"]');
@@ -88,10 +89,11 @@ class ImageGenerator {
 
     onServiceChange() {
         const service = document.querySelector('input[name="service"]:checked')?.value;
-        // Show upload area only for huggingface (the only free img2img provider)
         if (this.imageUploadArea) {
             this.imageUploadArea.style.display = (service === 'huggingface') ? 'block' : 'none';
         }
+        // Update saved service so checkApiKey reads the right value
+        this.service = service;
         this.checkApiKey();
     }
 
@@ -126,25 +128,28 @@ class ImageGenerator {
             localStorage.setItem('api_key', 'not-needed');
         }
 
+        // Service selector is always visible — only toggle API key area and upload area
+        this.apiSetup.style.display = 'block';
+
         // Show upload area only for huggingface
         if (this.imageUploadArea) {
             this.imageUploadArea.style.display = (selectedService === 'huggingface') ? 'block' : 'none';
         }
 
         if (selectedService === 'pollinations') {
-            this.apiSetup.style.display = 'none';
+            this.apiKeyArea.style.display = 'none';
             this.generatorSection.style.display = 'block';
             this.promptInput.focus();
         } else if (selectedService === 'huggingface' && this.apiKey && this.apiKey !== 'not-needed') {
-            this.apiSetup.style.display = 'none';
+            this.apiKeyArea.style.display = 'none';
             this.generatorSection.style.display = 'block';
             this.promptInput.focus();
         } else if (selectedService === 'stability' && this.apiKey) {
-            this.apiSetup.style.display = 'none';
+            this.apiKeyArea.style.display = 'none';
             this.generatorSection.style.display = 'block';
             this.promptInput.focus();
         } else {
-            this.apiSetup.style.display = 'block';
+            this.apiKeyArea.style.display = 'flex';
             this.generatorSection.style.display = 'none';
             this.apiKeyInput.focus();
         }
