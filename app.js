@@ -612,20 +612,8 @@ class ImageGenerator {
 
     showSuccess(message) {
         const successDiv = document.createElement('div');
-        successDiv.className = 'success-message';
+        successDiv.className = 'success-toast';
         successDiv.textContent = message;
-        successDiv.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: #10b981;
-            color: white;
-            padding: 15px 25px;
-            border-radius: 10px;
-            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
-            z-index: 1000;
-            animation: slideIn 0.3s ease-out;
-        `;
 
         document.body.appendChild(successDiv);
 
